@@ -92,7 +92,7 @@ function useLabelTexture(brand) {
 }
 
 // ---------- the scene ----------
-function Bar({ brand, replay, onPhase }) {
+function Bar({ brand, replay, onPhase, hotspots, loop }) {
   const root = useRef();
   const pivot = useRef();
   const mouth = useRef();
@@ -127,6 +127,7 @@ function Bar({ brand, replay, onPhase }) {
   useFrame((state, dt) => {
     const t0 = state.clock.elapsedTime;
     if (start.current === null) start.current = t0 + 0.6;
+    if (loop && freeze == null && t0 - start.current > 11) start.current = t0 + 0.4;
     const t = freeze ?? t0 - start.current;
     const tilt = t < DUR.tilt ? ease(clamp01(t / DUR.tilt)) : t < DUR.tilt + DUR.pour ? 1 : 1 - ease(clamp01((t - DUR.tilt - DUR.pour) / DUR.back));
     const pouring = t > DUR.tilt * 0.85 && t < DUR.tilt + DUR.pour + 0.15;
@@ -231,7 +232,7 @@ function Bar({ brand, replay, onPhase }) {
             <sphereGeometry args={[1, 8, 8]} />
             {amber}
           </instancedMesh>
-          <Html position={[0.62, 1.05, 0]} center distanceFactor={7} zIndexRange={[20, 0]}><Hotspot n="02" label="Signature cocktails" /></Html>
+          {hotspots && <Html position={[0.62, 1.05, 0]} center distanceFactor={7} zIndexRange={[20, 0]}><Hotspot n="02" label="Signature cocktails" /></Html>}
         </group>
 
         {/* bottle, rotating about its middle */}
@@ -256,7 +257,7 @@ function Bar({ brand, replay, onPhase }) {
               <meshStandardMaterial color="#CFAA5C" metalness={1} roughness={0.22} />
             </mesh>
             <mesh ref={mouth} position={[0, 2.06, 0]} />
-            <Html position={[0.35, 1.7, 0]} center distanceFactor={7} zIndexRange={[20, 0]}><Hotspot n="01" label={brand?.name ? `${brand.name} on the pour` : "Premium cognac"} /></Html>
+            {hotspots && <Html position={[0.35, 1.7, 0]} center distanceFactor={7} zIndexRange={[20, 0]}><Hotspot n="01" label={brand?.name ? `${brand.name} on the pour` : "Premium cognac"} /></Html>}
           </group>
         </group>
 
@@ -268,7 +269,7 @@ function Bar({ brand, replay, onPhase }) {
           </mesh>
         </group>
 
-        <Html position={[-1.7, 0.25, 0.9]} center distanceFactor={7} zIndexRange={[20, 0]}><Hotspot n="03" label="Live DJs nightly" /></Html>
+        {hotspots && <Html position={[-1.7, 0.25, 0.9]} center distanceFactor={7} zIndexRange={[20, 0]}><Hotspot n="03" label="Live DJs nightly" /></Html>}
       </Float>
       <ContactShadows position={[0, -1.25, 0]} opacity={0.55} scale={7} blur={2.6} far={2} color="#000" />
     </group>
@@ -284,7 +285,7 @@ function Hotspot({ n, label }) {
   );
 }
 
-export default function PourScene({ brand, replay = 0, onPhase }) {
+export default function PourScene({ brand, replay = 0, onPhase, hotspots = false, loop = false }) {
   return (
     <Canvas
       shadows
@@ -297,7 +298,7 @@ export default function PourScene({ brand, replay = 0, onPhase }) {
       <spotLight position={[3, 6, 4]} angle={0.45} penumbra={1} intensity={60} color="#ffe2b0" castShadow />
       <spotLight position={[-5, 3, -2]} angle={0.6} penumbra={1} intensity={30} color="#CFAA5C" />
       <pointLight position={[0.6, 0.6, 1.5]} intensity={4} color="#ff9a3c" distance={4} />
-      <Bar brand={brand} replay={replay} onPhase={onPhase} />
+      <Bar brand={brand} replay={replay} onPhase={onPhase} hotspots={hotspots} loop={loop} />
       <Sparkles count={70} scale={[8, 5, 3]} size={2.2} speed={0.35} opacity={0.7} color="#E8D39C" position={[0, 0.5, -1]} />
       <Environment resolution={256}>
         <Lightformer form="rect" intensity={3} color="#fff1d6" position={[0, 4, -3]} scale={[10, 2, 1]} />

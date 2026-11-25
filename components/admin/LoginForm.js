@@ -1,9 +1,12 @@
 "use client";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, Loader2, Lock, Mail } from "lucide-react";
 import { api } from "@/lib/ui/api";
 import { ThemeSwitch } from "@/lib/ui/theme";
+
+const PourScene = dynamic(() => import("./PourScene"), { ssr: false, loading: () => null });
 
 export default function LoginForm() {
   const router = useRouter();
@@ -42,19 +45,22 @@ export default function LoginForm() {
   const titles = { login: ["Welcome back", "Sign in to the ARYO dashboard"], forgot: ["Forgot password", "We'll email you a reset code"], reset: ["Reset password", "Enter the code and a new password"], change: ["Set your password", "This replaces your temporary password"] };
   return (
     <div className="erp grid lg:grid-cols-[1.1fr_1fr] min-h-screen">
-      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden p-10 text-[#EFEAE0] grain" style={{ background: "radial-gradient(120% 80% at 20% 0%, #2a2112 0%, #0b0a08 55%, #050407 100%)" }}>
+      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden p-10 min-h-screen text-[#EFEAE0] grain" style={{ background: "radial-gradient(120% 80% at 20% 0%, #2a2112 0%, #0b0a08 55%, #050407 100%)" }}>
         <div className="absolute -right-40 top-1/3 h-[520px] w-[520px] rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(circle, #CFAA5C, transparent 60%)" }} />
         <div className="relative flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/aryo-logo.jpg" alt="ARYO" className="h-12 w-12 rounded-full ring-1 ring-[#CFAA5C]/60" />
           <div><div className="font-display font-bold tracking-[.25em] text-sm">ARYO</div><div className="text-[10px] tracking-[.35em] text-[#CFAA5C]">NAIROBI</div></div>
         </div>
+        <div className="absolute inset-x-0 top-[8%] h-[58%] pointer-events-none"><PourScene loop /></div>
+        <div className="relative">
         <div className="relative max-w-md">
           <div className="text-[11px] uppercase tracking-[.3em] text-[#CFAA5C]">Management hub</div>
-          <h2 className="mt-4 font-display text-5xl font-bold leading-[1.02] gold-text">Where dining<br />meets nightlife.</h2>
-          <p className="mt-5 text-[13px] text-[#a7a092] leading-relaxed">Bookings, talent, events, clubs and partners — run every night at ARYO from one place.</p>
+          <h2 className="mt-3 font-display text-[44px] font-bold leading-[1.02] gold-text">Where dining<br />meets nightlife.</h2>
+          <p className="mt-5 text-[13px] text-[#a7a092] leading-relaxed">DJ bookings, people, clubs, sponsors and online presence — everything ARYO runs on, in one place.</p>
         </div>
-        <div className="relative text-[11px] text-[#6f695e]">Astrol Square, Red Hill Rd · Nairobi</div>
+        <div className="relative mt-8 text-[11px] text-[#6f695e]">Astrol Square, Red Hill Rd · Nairobi</div>
+        </div>
       </aside>
       <main className="relative flex items-center justify-center p-6">
         <div className="absolute right-5 top-5"><ThemeSwitch /></div>

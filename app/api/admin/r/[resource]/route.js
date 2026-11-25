@@ -29,8 +29,7 @@ export const POST = handler(async (req, { params }) => {
   let row = pick(body, r.fields);
   for (const f of r.required) if (row[f] == null) throw new HttpError(400, `${f.replace(/_/g, " ")} is required.`);
   if (r.prepare) row = r.prepare(row, staff, true);
-  if (params.resource === "partners" && row.hero_brand) await adminDb().from(r.table).update({ hero_brand: false }).eq("hero_brand", true);
-  const { data, error } = await adminDb().from(r.table).insert(row).select().single();
+  const { data, error } = await adminDb().from(r.table).insert(row).select(r.select || "*").single();
   if (error) throw new HttpError(400, error.code === "23505" ? "That name/link already exists." : error.message);
   await audit(staff, "created", params.resource, r.label(data));
   return NextResponse.json({ row: data });

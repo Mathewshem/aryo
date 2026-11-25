@@ -5,7 +5,7 @@ import { pick } from "@/lib/server/resources";
 import { audit } from "@/lib/server/audit";
 
 export const dynamic = "force-dynamic";
-const FIELDS = ["site_name", "tagline", "email", "phone", "whatsapp", "instagram", "address", "map_url", "happy_hour", "booking_alert_emails"];
+const FIELDS = ["site_name", "tagline", "email", "phone", "whatsapp", "instagram", "address", "alert_emails"];
 
 export const GET = handler(async () => {
   await requireStaff();

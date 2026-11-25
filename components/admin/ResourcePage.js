@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Pencil, Plus, Search, Trash2, Loader2, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { api } from "@/lib/ui/api";
 import { confirmBox, toast } from "@/lib/ui/dialogs";
@@ -33,9 +33,17 @@ export function FieldInput({ f, value, onChange, form }) {
   const common = { className: "field", value: value ?? "", onChange: (e) => onChange(e.target.value), placeholder: f.placeholder, required: f.required };
   switch (f.type) {
     case "textarea": return <textarea rows={f.rows || 4} {...common} />;
-    case "select": return (
-      <select {...common}>{!f.required && <option value="">—</option>}{(typeof f.options === "function" ? f.options(form) : f.options).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
-    );
+    case "select": {
+      const opts = typeof f.options === "function" ? f.options(form) : f.options;
+      const groups = opts.some((o) => o.group) ? [...new Set(opts.map((o) => o.group))] : null;
+      return (
+        <select {...common}>{!f.required && <option value="">—</option>}
+          {f.required && !value && <option value="">Choose…</option>}
+          {groups ? groups.map((g) => <optgroup key={g} label={g}>{opts.filter((o) => o.group === g).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>)
+            : opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    }
     case "toggle": return <Toggle checked={!!value} onChange={onChange} label={f.label} />;
     case "photo": return <PhotoPicker value={value} onChange={onChange} name={form.name || form.title} folder={f.folder} shape={f.shape} size={f.size || 88} />;
     case "multi": {
@@ -60,10 +68,14 @@ export function FieldInput({ f, value, onChange, form }) {
 export function FormGrid({ fields, form, setForm }) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
-      {fields.filter((f) => !f.hidden?.(form)).map((f) => (
+      {fields.filter((f) => !f.hidden?.(form)).map((f, i) => f.type === "section" ? (
+        <div key={"s" + i} className="col-span-2 flex items-center gap-3 pt-2 first:pt-0">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[.12em] t-gold whitespace-nowrap">{f.label}</span><span className="h-px flex-1" style={{ background: "var(--line)" }} />
+        </div>
+      ) : (
         <div key={f.key} className={f.half ? "col-span-2 sm:col-span-1" : "col-span-2"}>
           {f.type !== "toggle" && <span className="label">{f.label}{f.required && <span style={{ color: "var(--bad)" }}> *</span>}</span>}
-          <FieldInput f={f} form={form} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+          <FieldInput f={f} form={form} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v, ...(f.onSet ? f.onSet(v, s) : {}) }))} />
           {f.help && <p className="mt-1 text-[10.5px] t-faint">{f.help}</p>}
         </div>
       ))}
@@ -72,15 +84,18 @@ export function FormGrid({ fields, form, setForm }) {
 }
 
 const PAGE = 20;
+const lc = (s) => (/^[A-Z]{2,}$/.test(s) ? s : s.toLowerCase());
 
 export default function ResourcePage({
   resource, title, subtitle, singular, icon, columns, fields, defaults = {}, tabs, tabKey, searchKeys = ["name"],
-  renderView, extraActions, toolbar, onRows, endpoint, canCreate = true, deleteLabel, transformSave, onSaved, readOnly,
+  renderView, extraActions, toolbar, onRows, endpoint, canCreate = true, deleteLabel, transformSave, onSaved, readOnly, filter, viewHref, header, modalWidth,
 }) {
   const { me } = useMe();
   const isAdmin = me.role === "admin";
   const base = endpoint || `/api/admin/r/${resource}`;
   const params = useSearchParams();
+  const router = useRouter();
+  const show = (r) => (viewHref ? router.push(viewHref(r)) : setView(r));
   const [rows, setRows] = useState(null);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("all");
@@ -95,15 +110,15 @@ export default function ResourcePage({
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const id = params.get("open");
-    if (id && rows) { const r = rows.find((x) => x.id === id); if (r) setView(r); }
+    if (id && rows && !viewHref) { const r = rows.find((x) => x.id === id); if (r) setView(r); }
   }, [params, rows]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
     const s = q.trim().toLowerCase();
-    return rows.filter((r) => (tab === "all" || String(r[tabKey]) === tab) &&
+    return rows.filter((r) => (!filter || filter(r)) && (tab === "all" || String(r[tabKey]) === tab) &&
       (!s || searchKeys.some((k) => String(k.split(".").reduce((o, p) => o?.[p], r) ?? "").toLowerCase().includes(s))));
-  }, [rows, q, tab, tabKey, searchKeys]);
+  }, [rows, q, tab, tabKey, searchKeys, filter]);
   useEffect(() => setPage(0), [q, tab]);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
   const shown = filtered.slice(page * PAGE, page * PAGE + PAGE);
@@ -128,20 +143,22 @@ export default function ResourcePage({
   const patch = async (r, body, msg) => {
     try { await api(`${base}/${r.id}`, { method: "PATCH", body }); toast(msg || "Updated"); load(); window.dispatchEvent(new Event("aryo-bookings")); } catch (e) { toast(e.message, "bad"); }
   };
-  const ctx = { patch, reload: load, openEdit, remove, isAdmin, rows: rows || [] };
+  const ctx = { patch, reload: load, openEdit, remove, isAdmin, rows: rows || [], openCreate: (extra = {}) => setEdit({ mode: "create", form: { ...defaults, ...extra } }) };
 
   return (
     <div>
       <PageHead title={title} subtitle={subtitle}>
         {toolbar?.(ctx)}
-        {canCreate && <button className="btn btn-primary" onClick={openCreate}><Plus size={14} /> Add {singular.toLowerCase()}</button>}
+        {canCreate && <button className="btn btn-primary" onClick={openCreate}><Plus size={14} /> Add {lc(singular)}</button>}
       </PageHead>
+      {header?.(ctx)}
       <div className="card overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 p-3 border-b b-line">
           {tabs && (
             <div className="flex flex-wrap gap-1 p-0.5 rounded-md bg-surface-2">
               {[{ value: "all", label: "All" }, ...tabs].map((t) => {
-                const n = t.value === "all" ? rows?.length : rows?.filter((r) => String(r[tabKey]) === t.value).length;
+                const base = (rows || []).filter((r) => !filter || filter(r));
+                const n = !rows ? "" : t.value === "all" ? base.length : base.filter((r) => String(r[tabKey]) === t.value).length;
                 return <button key={t.value} onClick={() => setTab(t.value)} className="h-7 px-3 rounded text-[11.5px] font-semibold transition-all"
                   style={tab === t.value ? { background: "var(--surface)", color: "var(--text)", boxShadow: "var(--shadow)" } : { color: "var(--muted)" }}>
                   {t.label} <span className="t-faint font-medium">{n ?? ""}</span></button>;
@@ -159,11 +176,11 @@ export default function ResourcePage({
             <tbody>
               {!rows && [...Array(6)].map((_, i) => <tr key={i}>{columns.map((c) => <td key={c.label}><div className="skeleton h-4 w-3/4" /></td>)}<td /></tr>)}
               {rows && shown.map((r) => (
-                <tr key={r.id} className="cursor-pointer" onClick={() => setView(r)}>
+                <tr key={r.id} className="cursor-pointer" onClick={() => show(r)}>
                   {columns.map((c) => <td key={c.label} style={{ textAlign: c.align }}>{c.render(r, ctx)}</td>)}
                   <td onClick={(e) => e.stopPropagation()}>
                     <RowMenu items={[
-                      { label: "View", icon: Eye, onClick: () => setView(r) },
+                      { label: viewHref ? "Open profile" : "View", icon: Eye, onClick: () => show(r) },
                       { label: "Edit", icon: Pencil, disabled: readOnly, onClick: () => openEdit(r) },
                       ...(extraActions?.(r, ctx) || []),
                       "sep",
@@ -190,10 +207,10 @@ export default function ResourcePage({
         )}
       </div>
 
-      <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.mode === "create" ? `Add ${singular.toLowerCase()}` : `Edit ${singular.toLowerCase()}`}
+      <Modal open={!!edit} onClose={() => setEdit(null)} width={modalWidth || 560} title={edit?.mode === "create" ? `Add ${lc(singular)}` : `Edit ${lc(singular)}`}
         subtitle={edit?.mode === "edit" ? edit.form.name || edit.form.title || edit.form.ref : "Fields marked * are required"} icon={icon}
         footer={<><button className="btn btn-ghost" onClick={() => setEdit(null)}>Cancel</button>
-          <button className="btn btn-gold" form="res-form" disabled={saving}>{saving && <Loader2 size={14} className="animate-spin" />} {edit?.mode === "create" ? `Add ${singular.toLowerCase()}` : "Save changes"}</button></>}>
+          <button className="btn btn-gold" form="res-form" disabled={saving}>{saving && <Loader2 size={14} className="animate-spin" />} {edit?.mode === "create" ? `Add ${lc(singular)}` : "Save changes"}</button></>}>
         {edit && <form id="res-form" onSubmit={save}><FormGrid fields={fields} form={edit.form} setForm={(fn) => setEdit((s) => ({ ...s, form: fn(s.form) }))} /></form>}
       </Modal>
 

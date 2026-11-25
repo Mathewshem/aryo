@@ -9,14 +9,11 @@ import { useMe } from "@/components/admin/MeContext";
 const fields = [
   { key: "site_name", label: "Business name", half: true },
   { key: "tagline", label: "Tagline", half: true },
-  { key: "email", label: "Public email", type: "email", half: true },
-  { key: "phone", label: "Reservations phone", half: true, placeholder: "07…" },
+  { key: "email", label: "Email", type: "email", half: true },
+  { key: "phone", label: "Phone", half: true, placeholder: "07…" },
   { key: "whatsapp", label: "WhatsApp number", half: true, placeholder: "2547…" },
   { key: "instagram", label: "Instagram link", half: true },
   { key: "address", label: "Address", half: true },
-  { key: "map_url", label: "Google Maps link", half: true },
-  { key: "happy_hour", label: "Happy hour text", half: true },
-  { key: "booking_alert_emails", label: "Send booking alerts to", half: true, help: "Separate several emails with commas" },
 ];
 
 export default function SettingsPage() {
@@ -30,7 +27,7 @@ export default function SettingsPage() {
   };
   return (
     <div className="max-w-3xl">
-      <PageHead title="Settings" subtitle="Contact details and alerts used across the website and emails" />
+      <PageHead title="Settings" subtitle="ARYO's own details, used on emails the system sends" />
       <form onSubmit={save} className="card">
         <div className="px-5 py-3.5 border-b b-line font-semibold">Business details</div>
         <div className="p-5">{form ? <fieldset disabled={me.role !== "admin"}><FormGrid fields={fields} form={form} setForm={setForm} /></fieldset> : <div className="skeleton h-48" />}</div>

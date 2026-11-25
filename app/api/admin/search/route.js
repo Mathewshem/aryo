@@ -10,16 +10,16 @@ export const GET = handler(async (req) => {
   if (q.length < 2) return NextResponse.json({ results: [] });
   const db = adminDb();
   const like = `%${q}%`;
-  const [t, b, e] = await Promise.all([
-    db.from("aryo_talent").select("id,name,category,photo_url").ilike("name", like).limit(6),
-    db.from("aryo_bookings").select("id,ref,client_name,status").or(`ref.ilike.${like},client_name.ilike.${like},phone.ilike.${like}`).limit(6),
-    db.from("aryo_events").select("id,title,event_date").ilike("title", like).limit(4),
+  const [t, c, p] = await Promise.all([
+    db.from("aryo_talent").select("id,name,category,photo_url").or(`name.ilike.${like},real_name.ilike.${like},phone.ilike.${like}`).limit(8),
+    db.from("aryo_clubs").select("id,name").ilike("name", like).limit(4),
+    db.from("aryo_partners").select("id,name,kind").ilike("name", like).limit(4),
   ]);
   return NextResponse.json({
     results: [
-      ...(t.data || []).map((x) => ({ type: "Talent", id: x.id, title: x.name, sub: x.category, href: `/admin/talent?open=${x.id}`, photo: x.photo_url })),
-      ...(b.data || []).map((x) => ({ type: "Booking", id: x.id, title: `${x.ref} · ${x.client_name}`, sub: x.status, href: `/admin/bookings?open=${x.id}` })),
-      ...(e.data || []).map((x) => ({ type: "Event", id: x.id, title: x.title, sub: x.event_date, href: `/admin/events?open=${x.id}` })),
+      ...(t.data || []).map((x) => ({ type: "Person", id: x.id, title: x.name, sub: x.category, href: `/admin/people/${x.id}`, photo: x.photo_url, avatar: true })),
+      ...(c.data || []).map((x) => ({ type: "Club", id: x.id, title: x.name, sub: "club", href: `/admin/clubs?open=${x.id}` })),
+      ...(p.data || []).map((x) => ({ type: x.kind === "media" ? "Online presence" : "Sponsor", id: x.id, title: x.name, sub: x.kind, href: `/admin/${x.kind === "media" ? "online" : "sponsors"}?open=${x.id}` })),
     ],
   });
 });

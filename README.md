@@ -1,68 +1,39 @@
-# ARYO Nairobi — website + management hub
+# ARYO Nairobi — Management Hub
 
-Public website (3D cognac pour hero, talent roster, events, clubs, online booking) and an
-ERP-style admin dashboard (light/dark mode) for ARYO Nairobi.
+Internal system for ARYO Nairobi (staff sign-in only; no public website). Tabs follow the director's brief:
 
-- **Stack:** Next.js 14 (App Router) · Tailwind · Supabase (Postgres + Storage) · three.js / React Three Fiber · Framer Motion · Recharts
-- **Hosting:** Vercel. Database lives in the existing Supabase project (`datanova`), isolated in `aryo_*` tables and the `aryo-media` storage bucket — nothing touches DATANOVA's tables.
+| Tab | What it holds |
+|---|---|
+| **DJ bookings** | ARYO's schedule: who plays which night, set times, agreed fee, amount paid, M-Pesa code, status. 7-day strip at the top. |
+| **DJs · Hosts & Entertainers · Designers · Artists · MCs** | Profiles with round photo, real name, bio, genres/speciality, phone, WhatsApp, email, Instagram, TikTok, usual fee, how to pay them (M-Pesa/bank/cash), staff notes. Each person has a full profile page with their booking history, nights per month, total paid and amount owed. |
+| **Clubs** | ARYO (the mother) and partner/sister clubs: location, contact person, notes. |
+| **Sponsors** | Hennessy, Martell, EABL… logo, contact person, deal notes. |
+| **Online presence** | Pages/platforms that feature ARYO (e.g. Nightlife 254): link, reach, contact, notes. |
+| Staff · Settings · Activity log | Accounts (admin/staff roles), ARYO's details, who changed what. |
 
-## Deploy (Vercel)
+Every row has a ⋮ menu (open/edit/actions/delete); every form is a boxed pop-up. Light/dark switch in the header.
 
-1. Import `mathewshem/aryo` in Vercel.
-2. Add Environment Variables (Project → Settings → Environment Variables):
+- **Stack:** Next.js 14 · Tailwind · Supabase (Postgres + Storage) · Recharts · React Three Fiber (3D pour on the sign-in page)
+- **Data:** the shared Supabase project (`datanova`), isolated in `aryo_*` tables and the `aryo-media` bucket. No table is readable with the public key; everything goes through the server with the service key.
+
+## Vercel environment variables
 
 | Name | Value |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://pvvmakrlfohctwplldad.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key (already in `.env.example`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` (same one DATANOVA uses). **Server-only.** |
-| `ARYO_SESSION_SECRET` | any long random string (`openssl rand -hex 32`) |
-| `GMAIL_SENDER_EMAIL` / `GMAIL_APP_PASSWORD` | Gmail + 16-char App Password for booking alerts and reset codes (same setup as DATANOVA) |
-| `NEXT_PUBLIC_SITE_URL` | the live URL, e.g. `https://aryo.vercel.app` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API Keys → a **secret key** (`sb_secret_…`). Server-only. |
+| `ARYO_SESSION_SECRET` | any long random text (32+ characters) |
+| `GMAIL_SENDER_EMAIL` / `GMAIL_APP_PASSWORD` | Gmail + App Password, for password-reset codes and new-staff emails |
+| `NEXT_PUBLIC_SITE_URL` | the live URL |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | optional — defaults are built in |
 
-3. Deploy.
+Redeploy after changing them.
 
-The database schema is already applied. To recreate it elsewhere run `supabase/schema.sql`, then `supabase/seed.sql`.
+## Sign in
 
-## First sign-in
+`/admin/login` (the home page redirects there). First account: `aryo@gmail.com` with the temporary password shared privately — you're asked to set your own on first sign-in.
 
-Go to `/admin/login`:
+**Roles:** admin = everything incl. delete, staff accounts, settings, activity log. Staff = add/edit profiles and bookings, no deleting.
 
-- Email: `aryo@gmail.com`
-- Temporary password: shared privately (not stored in this repo)
+## Database
 
-You'll be asked to choose a new password straight away. Then add staff under **Staff** — each gets a temporary password by email.
-
-## Roles
-
-- **Admin** — everything, including deleting records, managing staff, settings and the activity log.
-- **Staff** — add/edit talent, events, clubs, sponsors and handle bookings. Can't delete or manage accounts.
-
-## What's where
-
-| Dashboard | Website |
-|---|---|
-| Talent — DJs, hosts & entertainers, MCs, artists, designers. Circular profile photo upload with drag/zoom crop. | `/talent`, `/talent/[slug]` with a booking form |
-| Bookings — approve/decline (client gets an email), WhatsApp/call the client | `/book` and every talent page |
-| Events — poster, date, line-up from the roster | `/events`, homepage |
-| Clubs — ARYO (flagship) and partner clubs | `/clubs`, homepage |
-| Sponsors & Media — upload official logos; switch **"Use on the 3D bottle"** to put a sponsor's logo on the homepage bottle | homepage marquee + 3D bottle |
-| Settings — phone, WhatsApp, booking alert emails, happy hour | footer, booking page |
-
-Every row has a ⋮ menu (View / Edit / extra actions / Delete). All pop-ups are boxed modals; no browser alerts.
-
-## 3D hero
-
-`components/site/PourScene.js` builds the bottle, snifter and pour from code (no model files).
-The label shows the logo uploaded for the sponsor marked "Use on the 3D bottle" — only use official
-artwork the sponsor has approved. Add `?pour=3` to the homepage URL to freeze the animation at second 3 for previews.
-
-## Local development
-
-```bash
-cp .env.example .env.local   # fill the server keys
-npm install
-npm run dev
-```
-
-No database access? `ARYO_FIXTURE_FILE=/path/data.json npm run dev` renders the public site from a JSON snapshot.
+`supabase/schema.sql` + `supabase/seed.sql` created the first version; `supabase/migrations/002_internal_system.sql` turns it into the internal system (DJ bookings table, profile/payment fields, contacts, no public access).

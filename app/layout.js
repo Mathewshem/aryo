@@ -13,8 +13,8 @@ import { DialogHost } from "@/lib/ui/dialogs";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://aryo.vercel.app"),
-  title: { default: "ARYO Nairobi — Where dining meets nightlife", template: "%s · ARYO Nairobi" },
-  description: "Cocktails, cuisine and experiences at Astrol Square, Red Hill Rd. Book Nairobi's top DJs, hosts, MCs and artists.",
+  title: { default: "ARYO Nairobi — Management Hub", template: "%s · ARYO" },
+  description: "ARYO Nairobi management hub.",
   icons: { icon: "/aryo-logo.jpg" },
   openGraph: { images: ["/aryo-logo.jpg"] },
 };
